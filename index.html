@@ -85,6 +85,11 @@
             subscribeToChanges();
           }, []);
 
+          // Réinitialiser selectedAnswer quand la question change
+          useEffect(() => {
+            setSelectedAnswer(null);
+          }, [currentQuestion]);
+
           const checkSupabaseConnection = () => {
             if (SUPABASE_URL === 'VOTRE_SUPABASE_URL') {
               setError('⚠️ Configuration Supabase manquante. Consultez les instructions ci-dessous.');
@@ -226,6 +231,7 @@
             if (currentQuestion < QUESTIONS.length - 1) {
               const nextQ = currentQuestion + 1;
               setCurrentQuestion(nextQ);
+              setSelectedAnswer(null);
               await saveGameState(nextQ, false);
             }
           };
