@@ -16,7 +16,7 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
         
-        // ⚠️ CONFIGURATION SUPABASE - À REMPLACER PAR VOS PROPRES CLÉS
+        //⚠️ CONFIGURATION SUPABASE - À REMPLACER PAR VOS PROPRES CLÉS
         const SUPABASE_URL = 'https://stwqwlbkyrivkvertdhd.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0d3F3bGJreXJpdmt2ZXJ0ZGhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyNjA2NDIsImV4cCI6MjA3NzgzNjY0Mn0.-sPTdNlNx9UNwRLhG5CS_lcAtIUhAc8zZS8wT5RkE_Q';
         
@@ -29,6 +29,7 @@
         const ChevronRight = ({className}) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>;
         const Crown = ({className}) => <svg className={className} fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-1.5z" /></svg>;
         const Award = ({className}) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>;
+        const Check = ({className}) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>;
 
         const QUESTIONS = [
           {id: 1, question: "Quel jour de la semaine est né Enzo ?", options: ["Mardi", "Vendredi", "Dimanche"], correct: 0},
@@ -76,6 +77,7 @@
           const [players, setPlayers] = useState([]);
           const [loading, setLoading] = useState(true);
           const [error, setError] = useState(null);
+          const [showResults, setShowResults] = useState(false);
 
           useEffect(() => {
             checkSupabaseConnection();
@@ -124,6 +126,7 @@
                 console.error('Error loading game state:', error);
               } else if (data) {
                 setCurrentQuestion(data.current_question || 0);
+                setShowResults(data.show_results || false);
               }
 
               await loadPlayers();
@@ -150,11 +153,15 @@
             }
           };
 
-          const saveGameState = async (questionIndex) => {
+          const saveGameState = async (questionIndex, resultsVisible = false) => {
             try {
               const { error } = await supabase
                 .from('quiz_state')
-                .upsert({ id: 1, current_question: questionIndex }, { onConflict: 'id' });
+                .upsert({ 
+                  id: 1, 
+                  current_question: questionIndex,
+                  show_results: resultsVisible
+                }, { onConflict: 'id' });
 
               if (error) console.error('Error saving game state:', error);
             } catch (err) {
@@ -192,11 +199,18 @@
             }
           };
 
-          const handleAnswer = async (answerIndex) => {
-            setSelectedAnswer(answerIndex);
-            const newAnswers = { ...answers, [currentQuestion]: answerIndex };
-            setAnswers(newAnswers);
-            await savePlayerAnswer(playerName, currentQuestion, answerIndex);
+          const handleSelectAnswer = (answerIndex) => {
+            if (answers[currentQuestion] === undefined) {
+              setSelectedAnswer(answerIndex);
+            }
+          };
+
+          const handleValidateAnswer = async () => {
+            if (selectedAnswer !== null && answers[currentQuestion] === undefined) {
+              const newAnswers = { ...answers, [currentQuestion]: selectedAnswer };
+              setAnswers(newAnswers);
+              await savePlayerAnswer(playerName, currentQuestion, selectedAnswer);
+            }
           };
 
           const handleAdminLogin = () => {
@@ -212,11 +226,13 @@
             if (currentQuestion < QUESTIONS.length - 1) {
               const nextQ = currentQuestion + 1;
               setCurrentQuestion(nextQ);
-              await saveGameState(nextQ);
+              await saveGameState(nextQ, false);
             }
           };
 
-          const handleShowResults = () => {
+          const handleShowResults = async () => {
+            await saveGameState(currentQuestion, true);
+            setShowResults(true);
             setView('results');
           };
 
@@ -224,11 +240,16 @@
             if (window.confirm('Êtes-vous sûr de vouloir réinitialiser le quiz ?')) {
               try {
                 await supabase.from('players').delete().neq('id', 0);
-                await supabase.from('quiz_state').upsert({ id: 1, current_question: 0 }, { onConflict: 'id' });
+                await supabase.from('quiz_state').upsert({ 
+                  id: 1, 
+                  current_question: 0,
+                  show_results: false
+                }, { onConflict: 'id' });
                 
                 setCurrentQuestion(0);
                 setPlayers([]);
                 setAnswers({});
+                setShowResults(false);
                 alert('Quiz réinitialisé !');
               } catch (err) {
                 console.error('Error resetting quiz:', err);
@@ -255,6 +276,13 @@
             })).sort((a, b) => b.score - a.score);
           };
 
+          // Rediriger automatiquement les participants vers les résultats si l'admin les affiche
+          useEffect(() => {
+            if (showResults && view === 'quiz' && !isAdmin) {
+              setView('results');
+            }
+          }, [showResults, view, isAdmin]);
+
           if (error) {
             return (
               <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-sky-400 to-cyan-300 flex items-center justify-center p-4">
@@ -271,7 +299,8 @@
                         <pre className="bg-gray-800 text-white p-2 rounded mt-2 overflow-x-auto text-xs">
 {`CREATE TABLE quiz_state (
   id INTEGER PRIMARY KEY,
-  current_question INTEGER DEFAULT 0
+  current_question INTEGER DEFAULT 0,
+  show_results BOOLEAN DEFAULT false
 );
 
 CREATE TABLE players (
@@ -281,7 +310,7 @@ CREATE TABLE players (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-INSERT INTO quiz_state (id, current_question) VALUES (1, 0);`}
+INSERT INTO quiz_state (id, current_question, show_results) VALUES (1, 0, false);`}
                         </pre>
                       </li>
                       <li>Remplacez les valeurs SUPABASE_URL et SUPABASE_ANON_KEY dans le code</li>
@@ -420,11 +449,18 @@ INSERT INTO quiz_state (id, current_question) VALUES (1, 0);`}
 
                     <div className="space-y-3 mb-6">
                       {question.options.map((option, idx) => (
-                        <button key={idx} onClick={() => handleAnswer(idx)} disabled={hasAnswered} className={`w-full p-4 rounded-xl text-left font-medium transition-all ${selectedAnswer === idx ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} ${hasAnswered ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                        <button key={idx} onClick={() => handleSelectAnswer(idx)} disabled={hasAnswered} className={`w-full p-4 rounded-xl text-left font-medium transition-all ${selectedAnswer === idx && !hasAnswered ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg ring-2 ring-purple-400' : hasAnswered && answers[currentQuestion] === idx ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} ${hasAnswered ? 'cursor-not-allowed opacity-75' : 'cursor-pointer hover:shadow-md'}`}>
                           {option}
                         </button>
                       ))}
                     </div>
+
+                    {!hasAnswered && selectedAnswer !== null && (
+                      <button onClick={handleValidateAnswer} className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 shadow-lg flex items-center justify-center gap-2 mb-4 animate-pulse">
+                        <Check className="w-6 h-6" />
+                        Valider ma réponse
+                      </button>
+                    )}
 
                     {hasAnswered && (
                       <div className="bg-green-100 border-2 border-green-500 rounded-xl p-4 text-center">
