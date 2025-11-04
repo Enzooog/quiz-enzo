@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Enzo - 18 ans 🎉</title>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // ⚠️ CONFIGURATION SUPABASE - À REMPLACER PAR VOS PROPRES CLÉS
+        const SUPABASE_URL = 'https://stwqwlbkyrivkvertdhd.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0d3F3bGJreXJpdmt2ZXJ0ZGhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyNjA2NDIsImV4cCI6MjA3NzgzNjY0Mn0.-sPTdNlNx9UNwRLhG5CS_lcAtIUhAc8zZS8wT5RkE_Q';
+        
+        // Initialiser Supabase
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const Trophy = () => <svg className="w-20 h-20 mx-auto mb-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>;
+        const Users = ({className}) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
+        const Play = ({className}) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+        const ChevronRight = ({className}) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>;
+        const Crown = ({className}) => <svg className={className} fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-1.5z" /></svg>;
+        const Award = ({className}) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>;
+
+        const QUESTIONS = [
+          {id: 1, question: "Quel jour de la semaine est né Enzo ?", options: ["Mardi", "Vendredi", "Dimanche"], correct: 0},
+          {id: 2, question: "Quel est le 2ème prénom d'Enzo ?", options: ["Noah", "Lucas", "Mathis"], correct: 2},
+          {id: 3, question: "Quel est le signe astrologique d'Enzo ?", options: ["Balance", "Scorpion", "Sagittaire"], correct: 1},
+          {id: 4, question: "Quel était le doudou adoré d'Enzo ?", options: ["Une souris", "Un lapin", "Un ourson"], correct: 0},
+          {id: 5, question: "Quel est le club de foot préféré d'Enzo ?", options: ["Stade Rennais", "Real de Madrid", "FC Barcelone"], correct: 2},
+          {id: 6, question: "Quel est l'athlète professionnel qu'Enzo aime le plus ?", options: ["Kylian Mbappé", "Lionel Messi", "Lamine Yamal"], correct: 1},
+          {id: 7, question: "Quel poste occupait Enzo au foot ?", options: ["Gardien", "Avant-centre", "Défenseur"], correct: 0},
+          {id: 8, question: "Quel est le passe-temps favori d'Enzo ?", options: ["Cuisiner", "Jouer aux jeux vidéo", "Faire des blagues"], correct: 1},
+          {id: 9, question: "Quel dessin animé regardait Enzo le plus souvent quand il était petit ?", options: ["Oui-Oui", "Dora", "Foot 2 Rue"], correct: 2},
+          {id: 10, question: "Quel est l'animé préféré d'Enzo ?", options: ["One Piece", "Solo Leveling", "Naruto"], correct: 0},
+          {id: 11, question: "Quelle est la couleur préférée d'Enzo ?", options: ["Noir", "Rouge", "Bleu"], correct: 1},
+          {id: 12, question: "Quel est le plat préféré d'Enzo ?", options: ["Tagliatelles carbonara", "Poulet curry", "Entrecôte frites"], correct: 2},
+          {id: 13, question: "Qu'est-ce qu'Enzo déteste manger ?", options: ["Des brocolis", "Des Carottes", "Des petit-pois"], correct: 2},
+          {id: 14, question: "Quel est le fast-food préféré d'Enzo ?", options: ["Burger King", "KFC", "Mc Do"], correct: 2},
+          {id: 15, question: "Quelle est la boisson favorite d'Enzo ?", options: ["Coca-Cola", "Ice Tea", "Oasis"], correct: 0},
+          {id: 16, question: "Quel est le parfum de glace préféré d'Enzo ?", options: ["Passion", "Barbe à papa", "Mangue"], correct: 1},
+          {id: 17, question: "Quel est le genre de musique favori d'Enzo ?", options: ["Le Rap", "La Pop", "La Techno"], correct: 0},
+          {id: 18, question: "Quel est le métier qu'Enzo souhaite faire ?", options: ["Graphiste", "Ingénieur en aéronautique", "Développeur de jeux vidéo"], correct: 2},
+          {id: 19, question: "Quelle matière Enzo détestait-il à l'école ?", options: ["Français", "Histoire-Géo", "Maths"], correct: 2},
+          {id: 20, question: "De quoi Enzo a peur ?", options: ["De l'eau", "Des Orages", "Des araignées"], correct: 2},
+          {id: 21, question: "Quels animaux Enzo aime-t-il le plus ?", options: ["Les chats", "Les chiens", "Les lapins"], correct: 1},
+          {id: 22, question: "Comment s'appelait le premier animal de compagnie d'Enzo ?", options: ["Volt", "Voyou", "Voiture"], correct: 1},
+          {id: 23, question: "Quel surnom donnaient ses parents à Enzo ?", options: ["Chouchou", "Doudou", "Loulou"], correct: 1},
+          {id: 24, question: "Quelle était la destination des dernières vacances d'Enzo ?", options: ["Lanzarote", "Ibiza", "Madrid"], correct: 0},
+          {id: 25, question: "Quelle est la destination rêvée d'Enzo ?", options: ["Barcelone", "Lisbonne", "Londres"], correct: 0},
+          {id: 26, question: "Quelle voiture de sport a déjà conduit Enzo ?", options: ["Une Lamborghini", "Une Ferrari", "Une Alpine"], correct: 2},
+          {id: 27, question: "Quelle est la pointure d'Enzo ?", options: ["38", "39", "40"], correct: 0},
+          {id: 28, question: "Combien de temps passe Enzo devant le miroir le matin ?", options: ["1 minute", "5 minutes", "10 minutes"], correct: 1},
+          {id: 29, question: "Combien de réveils programme Enzo le matin avant de se lever ?", options: ["1", "2", "3"], correct: 0},
+          {id: 30, question: "Que boit Enzo au petit-déjeuner ?", options: ["Café", "Chocolat chaud", "Lait froid"], correct: 2}
+        ];
+
+        const ADMIN_CODE = "enzo18";
+
+        function QuizApp() {
+          const [view, setView] = useState('home');
+          const [playerName, setPlayerName] = useState('');
+          const [currentQuestion, setCurrentQuestion] = useState(0);
+          const [selectedAnswer, setSelectedAnswer] = useState(null);
+          const [answers, setAnswers] = useState({});
+          const [isAdmin, setIsAdmin] = useState(false);
+          const [adminCode, setAdminCode] = useState('');
+          const [players, setPlayers] = useState([]);
+          const [loading, setLoading] = useState(true);
+          const [error, setError] = useState(null);
+
+          useEffect(() => {
+            checkSupabaseConnection();
+            loadGameState();
+            subscribeToChanges();
+          }, []);
+
+          const checkSupabaseConnection = () => {
+            if (SUPABASE_URL === 'VOTRE_SUPABASE_URL') {
+              setError('⚠️ Configuration Supabase manquante. Consultez les instructions ci-dessous.');
+            }
+          };
+
+          const subscribeToChanges = () => {
+            // S'abonner aux changements de l'état du quiz
+            const quizStateChannel = supabase
+              .channel('quiz_state_changes')
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_state' }, () => {
+                loadGameState();
+              })
+              .subscribe();
+
+            // S'abonner aux changements des joueurs
+            const playersChannel = supabase
+              .channel('players_changes')
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => {
+                loadPlayers();
+              })
+              .subscribe();
+
+            return () => {
+              supabase.removeChannel(quizStateChannel);
+              supabase.removeChannel(playersChannel);
+            };
+          };
+
+          const loadGameState = async () => {
+            try {
+              const { data, error } = await supabase
+                .from('quiz_state')
+                .select('*')
+                .eq('id', 1)
+                .single();
+
+              if (error && error.code !== 'PGRST116') {
+                console.error('Error loading game state:', error);
+              } else if (data) {
+                setCurrentQuestion(data.current_question || 0);
+              }
+
+              await loadPlayers();
+            } catch (err) {
+              console.error('Error:', err);
+            }
+            setLoading(false);
+          };
+
+          const loadPlayers = async () => {
+            try {
+              const { data, error } = await supabase
+                .from('players')
+                .select('*')
+                .order('created_at', { ascending: true });
+
+              if (error) {
+                console.error('Error loading players:', error);
+              } else {
+                setPlayers(data || []);
+              }
+            } catch (err) {
+              console.error('Error:', err);
+            }
+          };
+
+          const saveGameState = async (questionIndex) => {
+            try {
+              const { error } = await supabase
+                .from('quiz_state')
+                .upsert({ id: 1, current_question: questionIndex }, { onConflict: 'id' });
+
+              if (error) console.error('Error saving game state:', error);
+            } catch (err) {
+              console.error('Error:', err);
+            }
+          };
+
+          const savePlayerAnswer = async (name, questionId, answer) => {
+            try {
+              const { data: existingPlayer } = await supabase
+                .from('players')
+                .select('*')
+                .eq('name', name)
+                .single();
+
+              const answers = existingPlayer?.answers || {};
+              answers[questionId] = answer;
+
+              const { error } = await supabase
+                .from('players')
+                .upsert({ 
+                  name: name,
+                  answers: answers
+                }, { onConflict: 'name' });
+
+              if (error) console.error('Error saving answer:', error);
+            } catch (err) {
+              console.error('Error:', err);
+            }
+          };
+
+          const handleStartQuiz = () => {
+            if (playerName.trim()) {
+              setView('quiz');
+            }
+          };
+
+          const handleAnswer = async (answerIndex) => {
+            setSelectedAnswer(answerIndex);
+            const newAnswers = { ...answers, [currentQuestion]: answerIndex };
+            setAnswers(newAnswers);
+            await savePlayerAnswer(playerName, currentQuestion, answerIndex);
+          };
+
+          const handleAdminLogin = () => {
+            if (adminCode === ADMIN_CODE) {
+              setIsAdmin(true);
+              setView('admin');
+            } else {
+              alert('Code incorrect');
+            }
+          };
+
+          const handleNextQuestion = async () => {
+            if (currentQuestion < QUESTIONS.length - 1) {
+              const nextQ = currentQuestion + 1;
+              setCurrentQuestion(nextQ);
+              await saveGameState(nextQ);
+            }
+          };
+
+          const handleShowResults = () => {
+            setView('results');
+          };
+
+          const handleResetQuiz = async () => {
+            if (window.confirm('Êtes-vous sûr de vouloir réinitialiser le quiz ?')) {
+              try {
+                await supabase.from('players').delete().neq('id', 0);
+                await supabase.from('quiz_state').upsert({ id: 1, current_question: 0 }, { onConflict: 'id' });
+                
+                setCurrentQuestion(0);
+                setPlayers([]);
+                setAnswers({});
+                alert('Quiz réinitialisé !');
+              } catch (err) {
+                console.error('Error resetting quiz:', err);
+              }
+            }
+          };
+
+          const calculateScore = (playerAnswers) => {
+            let score = 0;
+            Object.keys(playerAnswers || {}).forEach(qId => {
+              const questionIndex = parseInt(qId);
+              if (playerAnswers[qId] === QUESTIONS[questionIndex].correct) {
+                score++;
+              }
+            });
+            return score;
+          };
+
+          const getLeaderboard = () => {
+            return players.map(player => ({
+              name: player.name,
+              score: calculateScore(player.answers || {}),
+              answers: player.answers || {}
+            })).sort((a, b) => b.score - a.score);
+          };
+
+          if (error) {
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 flex items-center justify-center p-4">
+                <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl w-full">
+                  <h2 className="text-2xl font-bold text-red-600 mb-4">⚠️ Configuration requise</h2>
+                  <p className="mb-4">{error}</p>
+                  <div className="bg-gray-100 rounded-lg p-4 text-sm">
+                    <p className="font-bold mb-2">Instructions de configuration Supabase :</p>
+                    <ol className="list-decimal list-inside space-y-2">
+                      <li>Créez un compte gratuit sur <a href="https://supabase.com" target="_blank" className="text-purple-600 underline">supabase.com</a></li>
+                      <li>Créez un nouveau projet</li>
+                      <li>Allez dans Settings → API pour récupérer votre URL et votre clé anonyme</li>
+                      <li>Dans l'éditeur SQL, exécutez ces commandes :
+                        <pre className="bg-gray-800 text-white p-2 rounded mt-2 overflow-x-auto text-xs">
+{`CREATE TABLE quiz_state (
+  id INTEGER PRIMARY KEY,
+  current_question INTEGER DEFAULT 0
+);
+
+CREATE TABLE players (
+  id SERIAL PRIMARY KEY,
+  name TEXT UNIQUE NOT NULL,
+  answers JSONB DEFAULT '{}',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+INSERT INTO quiz_state (id, current_question) VALUES (1, 0);`}
+                        </pre>
+                      </li>
+                      <li>Remplacez les valeurs SUPABASE_URL et SUPABASE_ANON_KEY dans le code</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (loading) {
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 flex items-center justify-center">
+                <div className="text-white text-2xl">Chargement...</div>
+              </div>
+            );
+          }
+
+          if (view === 'home') {
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 flex items-center justify-center p-4">
+                <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
+                  <div className="text-center mb-8">
+                    <Trophy />
+                    <h1 className="text-4xl font-bold text-gray-800 mb-2">Quiz Enzo</h1>
+                    <p className="text-gray-600">30 questions pour ses 18 ans ! 🎉</p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Entre ton nom :</label>
+                      <input type="text" value={playerName} onChange={(e) => setPlayerName(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none" placeholder="Ton prénom" onKeyPress={(e) => e.key === 'Enter' && handleStartQuiz()} />
+                    </div>
+                    
+                    <button onClick={handleStartQuiz} disabled={!playerName.trim()} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                      <Play className="w-5 h-5" />
+                      Commencer le quiz
+                    </button>
+
+                    <button onClick={() => setView('admin-login')} className="w-full bg-gray-600 text-white py-3 rounded-lg font-semibold hover:bg-gray-700">
+                      Accès Admin
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (view === 'admin-login') {
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 flex items-center justify-center p-4">
+                <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Accès Admin</h2>
+                  <div className="space-y-4">
+                    <input type="password" value={adminCode} onChange={(e) => setAdminCode(e.target.value)} className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none" placeholder="Code admin" onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()} />
+                    <button onClick={handleAdminLogin} className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700">Se connecter</button>
+                    <button onClick={() => setView('home')} className="w-full bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400">Retour</button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (view === 'admin') {
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 p-4">
+                <div className="max-w-4xl mx-auto">
+                  <div className="bg-white rounded-3xl shadow-2xl p-8 mb-6">
+                    <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">Panneau Admin</h2>
+                    
+                    <div className="bg-purple-100 rounded-xl p-6 mb-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-800">Question actuelle</h3>
+                          <p className="text-gray-600">Question {currentQuestion + 1} / {QUESTIONS.length}</p>
+                        </div>
+                        <Users className="w-12 h-12 text-purple-600" />
+                      </div>
+                      
+                      <div className="bg-white rounded-lg p-4 mb-4">
+                        <p className="font-semibold text-gray-800">{QUESTIONS[currentQuestion].question}</p>
+                      </div>
+
+                      <div className="flex gap-3">
+                        {currentQuestion < QUESTIONS.length - 1 ? (
+                          <button onClick={handleNextQuestion} className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 flex items-center justify-center gap-2">
+                            Question suivante <ChevronRight className="w-5 h-5" />
+                          </button>
+                        ) : (
+                          <button onClick={handleShowResults} className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 flex items-center justify-center gap-2">
+                            <Trophy />
+                            Afficher les résultats
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-100 rounded-xl p-6 mb-4">
+                      <h3 className="text-xl font-bold text-gray-800 mb-4">Participants ({players.length})</h3>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {players.map((player, idx) => (
+                          <div key={idx} className="bg-white rounded-lg p-3 flex justify-between items-center">
+                            <span className="font-medium">{player.name}</span>
+                            <span className="text-sm text-gray-600">{Object.keys(player.answers || {}).length} / {currentQuestion + 1} réponses</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button onClick={handleResetQuiz} className="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700">Réinitialiser le quiz</button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (view === 'quiz') {
+            const question = QUESTIONS[currentQuestion];
+            const hasAnswered = answers[currentQuestion] !== undefined;
+
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 p-4">
+                <div className="max-w-2xl mx-auto">
+                  <div className="bg-white rounded-3xl shadow-2xl p-8">
+                    <div className="mb-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-sm font-medium text-gray-600">Question {currentQuestion + 1} / {QUESTIONS.length}</span>
+                        <span className="text-sm font-medium text-purple-600">👋 {playerName}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="bg-gradient-to-r from-purple-600 to-pink-600 h-2 rounded-full transition-all duration-300" style={{ width: `${((currentQuestion + 1) / QUESTIONS.length) * 100}%` }} />
+                      </div>
+                    </div>
+
+                    <h2 className="text-2xl font-bold text-gray-800 mb-6">{question.question}</h2>
+
+                    <div className="space-y-3 mb-6">
+                      {question.options.map((option, idx) => (
+                        <button key={idx} onClick={() => handleAnswer(idx)} disabled={hasAnswered} className={`w-full p-4 rounded-xl text-left font-medium transition-all ${selectedAnswer === idx ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'} ${hasAnswered ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+
+                    {hasAnswered && (
+                      <div className="bg-green-100 border-2 border-green-500 rounded-xl p-4 text-center">
+                        <p className="text-green-800 font-semibold">✅ Réponse enregistrée ! En attente de la prochaine question...</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (view === 'results') {
+            const leaderboard = getLeaderboard();
+
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 p-4">
+                <div className="max-w-4xl mx-auto">
+                  <div className="bg-white rounded-3xl shadow-2xl p-8">
+                    <div className="text-center mb-8">
+                      <Trophy />
+                      <h1 className="text-4xl font-bold text-gray-800 mb-2">Résultats finaux</h1>
+                      <p className="text-gray-600">Classement du Quiz Enzo 🎉</p>
+                    </div>
+
+                    <div className="space-y-4 mb-8">
+                      {leaderboard.map((player, idx) => (
+                        <div key={idx} className={`rounded-xl p-6 ${idx === 0 ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' : idx === 1 ? 'bg-gradient-to-r from-gray-300 to-gray-400' : idx === 2 ? 'bg-gradient-to-r from-orange-400 to-orange-500' : 'bg-gray-100'}`}>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-4">
+                              <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl ${idx === 0 ? 'bg-yellow-600 text-white' : idx === 1 ? 'bg-gray-600 text-white' : idx === 2 ? 'bg-orange-600 text-white' : 'bg-gray-300 text-gray-700'}`}>
+                                {idx === 0 ? <Crown className="w-6 h-6" /> : idx + 1}
+                              </div>
+                              <div>
+                                <h3 className="text-xl font-bold text-gray-800">{player.name}</h3>
+                                <p className="text-sm text-gray-700">{player.score} / {QUESTIONS.length} points</p>
+                              </div>
+                            </div>
+                            {idx < 3 && <Award className={`w-8 h-8 ${idx === 0 ? 'text-yellow-700' : idx === 1 ? 'text-gray-700' : 'text-orange-700'}`} />}
+                          </div>
+
+                          <div className="bg-white bg-opacity-50 rounded-lg p-4">
+                            <p className="text-sm font-semibold text-gray-700 mb-2">Questions incorrectes :</p>
+                            <div className="space-y-1 max-h-40 overflow-y-auto">
+                              {QUESTIONS.map((q, qIdx) => {
+                                const playerAnswer = player.answers[qIdx];
+                                if (playerAnswer !== undefined && playerAnswer !== q.correct) {
+                                  return <div key={qIdx} className="text-xs text-gray-700">• Q{qIdx + 1}: {q.question}</div>;
+                                }
+                                return null;
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {isAdmin && (
+                      <button onClick={() => setView('admin')} className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700">Retour à l'admin</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          return null;
+        }
+
+        ReactDOM.render(<QuizApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
