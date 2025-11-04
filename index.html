@@ -83,21 +83,7 @@
             checkSupabaseConnection();
             loadGameState();
             subscribeToChanges();
-            
-            // Polling de backup toutes les 2 secondes pour s'assurer que les changements sont détectés
-            const pollingInterval = setInterval(() => {
-              loadGameState();
-            }, 2000);
-            
-            return () => {
-              clearInterval(pollingInterval);
-            };
           }, []);
-
-          // Réinitialiser selectedAnswer quand la question change
-          useEffect(() => {
-            setSelectedAnswer(null);
-          }, [currentQuestion]);
 
           const checkSupabaseConnection = () => {
             if (SUPABASE_URL === 'VOTRE_SUPABASE_URL') {
@@ -109,32 +95,18 @@
             // S'abonner aux changements de l'état du quiz
             const quizStateChannel = supabase
               .channel('quiz_state_changes')
-              .on('postgres_changes', { 
-                event: '*', 
-                schema: 'public', 
-                table: 'quiz_state' 
-              }, (payload) => {
-                console.log('Quiz state changed:', payload);
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_state' }, () => {
                 loadGameState();
               })
-              .subscribe((status) => {
-                console.log('Quiz state subscription status:', status);
-              });
+              .subscribe();
 
             // S'abonner aux changements des joueurs
             const playersChannel = supabase
               .channel('players_changes')
-              .on('postgres_changes', { 
-                event: '*', 
-                schema: 'public', 
-                table: 'players' 
-              }, (payload) => {
-                console.log('Players changed:', payload);
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => {
                 loadPlayers();
               })
-              .subscribe((status) => {
-                console.log('Players subscription status:', status);
-              });
+              .subscribe();
 
             return () => {
               supabase.removeChannel(quizStateChannel);
@@ -153,14 +125,8 @@
               if (error && error.code !== 'PGRST116') {
                 console.error('Error loading game state:', error);
               } else if (data) {
-                const newQuestion = data.current_question || 0;
-                const newShowResults = data.show_results || false;
-                
-                setCurrentQuestion(newQuestion);
-                setShowResults(newShowResults);
-                
-                // Réinitialiser selectedAnswer si la question a changé
-                setSelectedAnswer(null);
+                setCurrentQuestion(data.current_question || 0);
+                setShowResults(data.show_results || false);
               }
 
               await loadPlayers();
@@ -260,7 +226,6 @@
             if (currentQuestion < QUESTIONS.length - 1) {
               const nextQ = currentQuestion + 1;
               setCurrentQuestion(nextQ);
-              setSelectedAnswer(null);
               await saveGameState(nextQ, false);
             }
           };
