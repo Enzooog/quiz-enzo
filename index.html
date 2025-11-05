@@ -82,36 +82,19 @@
           useEffect(() => {
             checkSupabaseConnection();
             loadGameState();
-            subscribeToChanges();
+            
+            // Polling toutes les 2 secondes
+            const interval = setInterval(() => {
+              loadGameState();
+            }, 2000);
+            
+            return () => clearInterval(interval);
           }, []);
 
           const checkSupabaseConnection = () => {
             if (SUPABASE_URL === 'VOTRE_SUPABASE_URL') {
               setError('⚠️ Configuration Supabase manquante. Consultez les instructions ci-dessous.');
             }
-          };
-
-          const subscribeToChanges = () => {
-            // S'abonner aux changements de l'état du quiz
-            const quizStateChannel = supabase
-              .channel('quiz_state_changes')
-              .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_state' }, () => {
-                loadGameState();
-              })
-              .subscribe();
-
-            // S'abonner aux changements des joueurs
-            const playersChannel = supabase
-              .channel('players_changes')
-              .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => {
-                loadPlayers();
-              })
-              .subscribe();
-
-            return () => {
-              supabase.removeChannel(quizStateChannel);
-              supabase.removeChannel(playersChannel);
-            };
           };
 
           const loadGameState = async () => {
@@ -226,6 +209,7 @@
             if (currentQuestion < QUESTIONS.length - 1) {
               const nextQ = currentQuestion + 1;
               setCurrentQuestion(nextQ);
+              setSelectedAnswer(null);
               await saveGameState(nextQ, false);
             }
           };
@@ -234,6 +218,10 @@
             await saveGameState(currentQuestion, true);
             setShowResults(true);
             setView('results');
+          };
+
+          const handleShowCorrection = () => {
+            setView('correction');
           };
 
           const handleResetQuiz = async () => {
@@ -250,6 +238,7 @@
                 setPlayers([]);
                 setAnswers({});
                 setShowResults(false);
+                setSelectedAnswer(null);
                 alert('Quiz réinitialisé !');
               } catch (err) {
                 console.error('Error resetting quiz:', err);
@@ -282,6 +271,11 @@
               setView('results');
             }
           }, [showResults, view, isAdmin]);
+
+          // Réinitialiser selectedAnswer quand la question change
+          useEffect(() => {
+            setSelectedAnswer(null);
+          }, [currentQuestion]);
 
           if (error) {
             return (
@@ -519,8 +513,79 @@ INSERT INTO quiz_state (id, current_question, show_results) VALUES (1, 0, false)
                     </div>
 
                     {isAdmin && (
-                      <button onClick={() => setView('admin')} className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700">Retour à l'admin</button>
+                      <div className="space-y-3">
+                        <button onClick={handleShowCorrection} className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700">
+                          Voir la correction complète
+                        </button>
+                        <button onClick={() => setView('admin')} className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700">
+                          Retour à l'admin
+                        </button>
+                      </div>
                     )}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          if (view === 'correction') {
+            const firstHalf = QUESTIONS.slice(0, 15);
+            const secondHalf = QUESTIONS.slice(15, 30);
+
+            return (
+              <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-sky-400 to-cyan-300 p-4">
+                <div className="max-w-7xl mx-auto">
+                  <div className="bg-white rounded-3xl shadow-2xl p-8">
+                    <div className="text-center mb-8">
+                      <h1 className="text-4xl font-bold text-gray-800 mb-2">Correction complète</h1>
+                      <p className="text-gray-600">Toutes les questions et leurs réponses</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                      {/* Colonne gauche : Questions 1-15 */}
+                      <div className="space-y-4">
+                        <h2 className="text-2xl font-bold text-purple-600 mb-4 text-center">Questions 1-15</h2>
+                        {firstHalf.map((q, idx) => (
+                          <div key={idx} className="bg-gray-50 rounded-xl p-4 border-2 border-gray-200">
+                            <h3 className="font-bold text-gray-800 mb-3">Q{idx + 1}. {q.question}</h3>
+                            <div className="space-y-2">
+                              {q.options.map((option, optIdx) => (
+                                <div key={optIdx} className={`p-2 rounded-lg flex items-center gap-2 ${optIdx === q.correct ? 'bg-green-100 border-2 border-green-500' : 'bg-white border border-gray-300'}`}>
+                                  {optIdx === q.correct && <Check className="w-5 h-5 text-green-600 flex-shrink-0" />}
+                                  <span className={optIdx === q.correct ? 'font-semibold text-green-800' : 'text-gray-700'}>
+                                    {option}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Colonne droite : Questions 16-30 */}
+                      <div className="space-y-4">
+                        <h2 className="text-2xl font-bold text-pink-600 mb-4 text-center">Questions 16-30</h2>
+                        {secondHalf.map((q, idx) => (
+                          <div key={idx} className="bg-gray-50 rounded-xl p-4 border-2 border-gray-200">
+                            <h3 className="font-bold text-gray-800 mb-3">Q{idx + 16}. {q.question}</h3>
+                            <div className="space-y-2">
+                              {q.options.map((option, optIdx) => (
+                                <div key={optIdx} className={`p-2 rounded-lg flex items-center gap-2 ${optIdx === q.correct ? 'bg-green-100 border-2 border-green-500' : 'bg-white border border-gray-300'}`}>
+                                  {optIdx === q.correct && <Check className="w-5 h-5 text-green-600 flex-shrink-0" />}
+                                  <span className={optIdx === q.correct ? 'font-semibold text-green-800' : 'text-gray-700'}>
+                                    {option}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button onClick={() => setView('results')} className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700">
+                      Retour aux résultats
+                    </button>
                   </div>
                 </div>
               </div>
